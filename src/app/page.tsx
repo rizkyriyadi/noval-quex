@@ -7,6 +7,10 @@ import PropertyCard from '@/components/ui/PropertyCard';
 import SectionHeading from '@/components/ui/SectionHeading';
 import Button from '@/components/ui/Button';
 
+// Force dynamic rendering to fetch fresh data from Firestore
+export const dynamic = 'force-dynamic';
+
+
 // Icon mapping for features
 const iconMap: { [key: string]: React.ElementType } = {
   Shield,

@@ -1,93 +1,179 @@
 /**
- * API Layer - Firebase-Ready Data Fetching Functions
+ * API Layer - Firebase-Backed Data Fetching Functions
  * 
- * These functions currently fetch from mock data but are structured
- * to easily swap out for Firebase SDK calls in the future.
- * 
- * Example Firebase migration:
- * import { collection, getDocs, query, where } from 'firebase/firestore';
- * import { db } from '@/lib/firebase';
+ * Fetches data from Firestore with fallback to mock data when empty.
  */
 
+import {
+    collection,
+    getDocs,
+    query,
+    where,
+    orderBy,
+    limit as firestoreLimit
+} from 'firebase/firestore';
+import { db } from './firebase';
 import { Property, NewsArticle, Testimonial, TeamMember } from '@/types';
-import { properties, news, testimonials, teamMembers } from './mockData';
-
-// Simulate async fetch delay (remove when using real API)
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+import { properties as mockProperties, news as mockNews, testimonials, teamMembers } from './mockData';
 
 // ============ PROPERTIES ============
 
 export async function getProperties(): Promise<Property[]> {
-    // Future Firebase implementation:
-    // const snapshot = await getDocs(collection(db, 'properties'));
-    // return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+        const q = query(collection(db, 'properties'), orderBy('createdAt', 'desc'));
+        const snapshot = await getDocs(q);
 
-    await delay(100);
-    return properties;
+        if (snapshot.empty) {
+            // Fallback to mock data if Firestore is empty
+            return mockProperties;
+        }
+
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Property));
+    } catch (error) {
+        console.error('Error fetching properties:', error);
+        return mockProperties;
+    }
 }
 
 export async function getFeaturedProperties(): Promise<Property[]> {
-    // Future Firebase implementation:
-    // const q = query(collection(db, 'properties'), where('featured', '==', true));
-    // const snapshot = await getDocs(q);
-    // return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+        const q = query(
+            collection(db, 'properties'),
+            where('featured', '==', true)
+        );
+        const snapshot = await getDocs(q);
 
-    await delay(100);
-    return properties.filter(p => p.featured);
+        if (snapshot.empty) {
+            return mockProperties.filter(p => p.featured);
+        }
+
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Property));
+    } catch (error) {
+        console.error('Error fetching featured properties:', error);
+        return mockProperties.filter(p => p.featured);
+    }
 }
 
 export async function getPropertyBySlug(slug: string): Promise<Property | null> {
-    // Future Firebase implementation:
-    // const q = query(collection(db, 'properties'), where('slug', '==', slug));
-    // const snapshot = await getDocs(q);
-    // return snapshot.empty ? null : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    try {
+        const q = query(collection(db, 'properties'), where('slug', '==', slug));
+        const snapshot = await getDocs(q);
 
-    await delay(100);
-    return properties.find(p => p.slug === slug) || null;
+        if (snapshot.empty) {
+            return mockProperties.find(p => p.slug === slug) || null;
+        }
+
+        const doc = snapshot.docs[0];
+        return { id: doc.id, ...doc.data() } as Property;
+    } catch (error) {
+        console.error('Error fetching property by slug:', error);
+        return mockProperties.find(p => p.slug === slug) || null;
+    }
 }
 
 export async function getPropertiesByType(type: Property['type']): Promise<Property[]> {
-    // Future Firebase implementation:
-    // const q = query(collection(db, 'properties'), where('type', '==', type));
-    // const snapshot = await getDocs(q);
-    // return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+        const q = query(collection(db, 'properties'), where('type', '==', type));
+        const snapshot = await getDocs(q);
 
-    await delay(100);
-    return properties.filter(p => p.type === type);
+        if (snapshot.empty) {
+            return mockProperties.filter(p => p.type === type);
+        }
+
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Property));
+    } catch (error) {
+        console.error('Error fetching properties by type:', error);
+        return mockProperties.filter(p => p.type === type);
+    }
 }
 
 // ============ NEWS ============
 
 export async function getNews(): Promise<NewsArticle[]> {
-    await delay(100);
-    return news;
+    try {
+        const q = query(collection(db, 'news'), orderBy('publishedAt', 'desc'));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            return mockNews;
+        }
+
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as NewsArticle));
+    } catch (error) {
+        console.error('Error fetching news:', error);
+        return mockNews;
+    }
 }
 
 export async function getNewsArticleBySlug(slug: string): Promise<NewsArticle | null> {
-    await delay(100);
-    return news.find(n => n.slug === slug) || null;
+    try {
+        const q = query(collection(db, 'news'), where('slug', '==', slug));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            return mockNews.find(n => n.slug === slug) || null;
+        }
+
+        const doc = snapshot.docs[0];
+        return { id: doc.id, ...doc.data() } as NewsArticle;
+    } catch (error) {
+        console.error('Error fetching news by slug:', error);
+        return mockNews.find(n => n.slug === slug) || null;
+    }
 }
 
 export async function getLatestNews(limit: number = 3): Promise<NewsArticle[]> {
-    await delay(100);
-    return news.slice(0, limit);
+    try {
+        const q = query(
+            collection(db, 'news'),
+            orderBy('publishedAt', 'desc'),
+            firestoreLimit(limit)
+        );
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            return mockNews.slice(0, limit);
+        }
+
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as NewsArticle));
+    } catch (error) {
+        console.error('Error fetching latest news:', error);
+        return mockNews.slice(0, limit);
+    }
 }
 
 // ============ TESTIMONIALS ============
+// (Still using mock data - can be migrated to Firestore later)
 
 export async function getTestimonials(): Promise<Testimonial[]> {
-    await delay(100);
     return testimonials;
 }
 
 // ============ TEAM ============
+// (Still using mock data - can be migrated to Firestore later)
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
-    await delay(100);
     return teamMembers;
 }
 
 // ============ CONTACT FORM ============
+
+import { addDoc, serverTimestamp } from 'firebase/firestore';
 
 export async function submitContactForm(data: {
     name: string;
@@ -96,36 +182,44 @@ export async function submitContactForm(data: {
     subject: string;
     message: string;
 }): Promise<{ success: boolean; message: string }> {
-    // Future Firebase implementation:
-    // await addDoc(collection(db, 'contacts'), {
-    //   ...data,
-    //   createdAt: serverTimestamp(),
-    //   status: 'new',
-    // });
+    try {
+        await addDoc(collection(db, 'contacts'), {
+            ...data,
+            createdAt: serverTimestamp(),
+            status: 'new',
+        });
 
-    await delay(500);
-    console.log('Contact form submission:', data);
-
-    return {
-        success: true,
-        message: 'Thank you for your message. We will contact you soon!',
-    };
+        return {
+            success: true,
+            message: 'Thank you for your message. We will contact you soon!',
+        };
+    } catch (error) {
+        console.error('Error submitting contact form:', error);
+        return {
+            success: false,
+            message: 'Failed to submit form. Please try again.',
+        };
+    }
 }
 
 // ============ NEWSLETTER ============
 
 export async function subscribeNewsletter(email: string): Promise<{ success: boolean; message: string }> {
-    // Future Firebase implementation:
-    // await addDoc(collection(db, 'newsletter'), {
-    //   email,
-    //   subscribedAt: serverTimestamp(),
-    // });
+    try {
+        await addDoc(collection(db, 'newsletter'), {
+            email,
+            subscribedAt: serverTimestamp(),
+        });
 
-    await delay(300);
-    console.log('Newsletter subscription:', email);
-
-    return {
-        success: true,
-        message: 'Successfully subscribed to our newsletter!',
-    };
+        return {
+            success: true,
+            message: 'Successfully subscribed to our newsletter!',
+        };
+    } catch (error) {
+        console.error('Error subscribing to newsletter:', error);
+        return {
+            success: false,
+            message: 'Failed to subscribe. Please try again.',
+        };
+    }
 }

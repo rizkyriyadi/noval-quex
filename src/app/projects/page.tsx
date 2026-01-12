@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, Grid3X3, LayoutList } from 'lucide-react';
+import { Search, SlidersHorizontal, Grid3X3, LayoutList, Loader2 } from 'lucide-react';
 import { Property } from '@/types';
-import { properties } from '@/lib/mockData';
+import { getProperties } from '@/lib/api';
 import PropertyCard from '@/components/ui/PropertyCard';
 import SectionHeading from '@/components/ui/SectionHeading';
 
@@ -18,13 +18,33 @@ const filterTabs: { value: PropertyType; label: string }[] = [
 ];
 
 export default function ProjectsPage() {
+    const [allProperties, setAllProperties] = useState<Property[]>([]);
+    const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState<PropertyType>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
-    const [filteredProperties, setFilteredProperties] = useState<Property[]>(properties);
+    const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
 
+    // Fetch properties from Firestore on mount
     useEffect(() => {
-        let result = properties;
+        async function fetchProperties() {
+            try {
+                const data = await getProperties();
+                setAllProperties(data);
+                setFilteredProperties(data);
+            } catch (error) {
+                console.error('Error fetching properties:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchProperties();
+    }, []);
+
+    // Apply filters when properties or filter changes
+    useEffect(() => {
+        let result = allProperties;
 
         // Filter by type
         if (activeFilter !== 'all') {
@@ -42,7 +62,7 @@ export default function ProjectsPage() {
         }
 
         setFilteredProperties(result);
-    }, [activeFilter, searchQuery]);
+    }, [activeFilter, searchQuery, allProperties]);
 
     const formatPrice = (price: number) => {
         if (price >= 1000000000) {
@@ -85,8 +105,8 @@ export default function ProjectsPage() {
                                     key={tab.value}
                                     onClick={() => setActiveFilter(tab.value)}
                                     className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${activeFilter === tab.value
-                                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/25'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/25'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                 >
                                     {tab.label}
@@ -113,8 +133,8 @@ export default function ProjectsPage() {
                                 <button
                                     onClick={() => setViewMode('grid')}
                                     className={`p-2 rounded-full transition-all ${viewMode === 'grid'
-                                            ? 'bg-white shadow text-emerald-600'
-                                            : 'text-gray-500 hover:text-gray-700'
+                                        ? 'bg-white shadow text-emerald-600'
+                                        : 'text-gray-500 hover:text-gray-700'
                                         }`}
                                     aria-label="Grid view"
                                 >
@@ -123,8 +143,8 @@ export default function ProjectsPage() {
                                 <button
                                     onClick={() => setViewMode('list')}
                                     className={`p-2 rounded-full transition-all ${viewMode === 'list'
-                                            ? 'bg-white shadow text-emerald-600'
-                                            : 'text-gray-500 hover:text-gray-700'
+                                        ? 'bg-white shadow text-emerald-600'
+                                        : 'text-gray-500 hover:text-gray-700'
                                         }`}
                                     aria-label="List view"
                                 >
@@ -144,88 +164,97 @@ export default function ProjectsPage() {
             {/* Properties Grid */}
             <section className="py-12 lg:py-20 bg-gray-50">
                 <div className="container mx-auto px-4 lg:px-8">
-                    {/* Results Count */}
-                    <div className="flex items-center justify-between mb-8">
-                        <p className="text-gray-600">
-                            Showing <span className="font-semibold text-gray-900">{filteredProperties.length}</span> properties
-                        </p>
-                        <select className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
-                            <option>Sort by: Newest</option>
-                            <option>Sort by: Price (Low to High)</option>
-                            <option>Sort by: Price (High to Low)</option>
-                        </select>
-                    </div>
-
-                    {/* Properties */}
-                    {filteredProperties.length > 0 ? (
-                        <div
-                            className={
-                                viewMode === 'grid'
-                                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'
-                                    : 'space-y-6'
-                            }
-                        >
-                            {filteredProperties.map((property, index) => (
-                                <div
-                                    key={property.id}
-                                    className="animate-fade-in"
-                                    style={{ animationDelay: `${index * 50}ms` }}
-                                >
-                                    {viewMode === 'grid' ? (
-                                        <PropertyCard property={property} />
-                                    ) : (
-                                        // List View Card
-                                        <div className="flex flex-col md:flex-row bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-                                            <div className="relative w-full md:w-80 h-64 md:h-auto">
-                                                <img
-                                                    src={property.image}
-                                                    alt={property.title}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                <div className="absolute top-4 left-4">
-                                                    <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-emerald-700 text-xs font-semibold rounded-full capitalize">
-                                                        {property.type}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="flex-1 p-6">
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div>
-                                                        <h3 className="text-xl font-serif font-bold text-gray-900 mb-1">
-                                                            {property.title}
-                                                        </h3>
-                                                        <p className="text-gray-500">{property.location}</p>
-                                                    </div>
-                                                    <span className="text-xl font-bold text-emerald-600">
-                                                        {formatPrice(property.price)}
-                                                    </span>
-                                                </div>
-                                                <p className="text-gray-600 mb-4 line-clamp-2">
-                                                    {property.description}
-                                                </p>
-                                                <div className="flex items-center gap-6 text-sm text-gray-500">
-                                                    <span>{property.bedrooms} Beds</span>
-                                                    <span>{property.bathrooms} Baths</span>
-                                                    <span>{property.area} m²</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                    {/* Loading State */}
+                    {loading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
                         </div>
                     ) : (
-                        <div className="text-center py-20">
-                            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <Search className="w-10 h-10 text-gray-400" />
+                        <>
+                            {/* Results Count */}
+                            <div className="flex items-center justify-between mb-8">
+                                <p className="text-gray-600">
+                                    Showing <span className="font-semibold text-gray-900">{filteredProperties.length}</span> properties
+                                </p>
+                                <select className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                                    <option>Sort by: Newest</option>
+                                    <option>Sort by: Price (Low to High)</option>
+                                    <option>Sort by: Price (High to Low)</option>
+                                </select>
                             </div>
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                No properties found
-                            </h3>
-                            <p className="text-gray-500">
-                                Try adjusting your search or filter criteria
-                            </p>
-                        </div>
+
+                            {/* Properties */}
+                            {filteredProperties.length > 0 ? (
+                                <div
+                                    className={
+                                        viewMode === 'grid'
+                                            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'
+                                            : 'space-y-6'
+                                    }
+                                >
+                                    {filteredProperties.map((property, index) => (
+                                        <div
+                                            key={property.id}
+                                            className="animate-fade-in"
+                                            style={{ animationDelay: `${index * 50}ms` }}
+                                        >
+                                            {viewMode === 'grid' ? (
+                                                <PropertyCard property={property} />
+                                            ) : (
+                                                // List View Card
+                                                <div className="flex flex-col md:flex-row bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                                                    <div className="relative w-full md:w-80 h-64 md:h-auto">
+                                                        <img
+                                                            src={property.image || 'https://via.placeholder.com/400x300?text=No+Image'}
+                                                            alt={property.title}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                        <div className="absolute top-4 left-4">
+                                                            <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-emerald-700 text-xs font-semibold rounded-full capitalize">
+                                                                {property.type}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 p-6">
+                                                        <div className="flex items-start justify-between mb-4">
+                                                            <div>
+                                                                <h3 className="text-xl font-serif font-bold text-gray-900 mb-1">
+                                                                    {property.title}
+                                                                </h3>
+                                                                <p className="text-gray-500">{property.location}</p>
+                                                            </div>
+                                                            <span className="text-xl font-bold text-emerald-600">
+                                                                {formatPrice(property.price)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-gray-600 mb-4 line-clamp-2">
+                                                            {property.description}
+                                                        </p>
+                                                        <div className="flex items-center gap-6 text-sm text-gray-500">
+                                                            <span>{property.bedrooms} Beds</span>
+                                                            <span>{property.bathrooms} Baths</span>
+                                                            <span>{property.area} m²</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-20">
+                                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <Search className="w-10 h-10 text-gray-400" />
+                                    </div>
+                                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                        No properties found
+                                    </h3>
+                                    <p className="text-gray-500">
+                                        Try adjusting your search or filter criteria
+                                    </p>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </section>
